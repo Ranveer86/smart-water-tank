@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Water Tank Controller</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f4f6fa;
+    --bg-tertiary: #eef1f7;
+    --text-primary: #0f1f3d;
+    --text-secondary: #5a6a85;
+    --text-tertiary: #9aaabb;
+    --border: rgba(0,0,0,0.1);
+    --border-md: rgba(0,0,0,0.15);
+    --radius-md: 8px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --blue-dark: #0C447C;
+    --blue-mid: #185FA5;
+    --blue: #378ADD;
+    --blue-light: #E6F1FB;
+    --green-dark: #3B6D11;
+    --green: #639922;
+    --green-light: #EAF3DE;
+    --amber-dark: #854F0B;
+    --amber-light: #FAEEDA;
+    --red-dark: #A32D2D;
+    --red-light: #FCEBEB;
+    --red-border: #F7C1C1;
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.07);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  /* ── APP SHELL ── */
+  .app-shell {
+    display: flex;
+    width: 100%;
+    max-width: 960px;
+    min-height: 90vh;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border: 0.5px solid var(--border);
+    background: var(--bg-tertiary);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 68px;
+    background: var(--blue-dark);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 0;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .nav-brand {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: var(--blue-mid);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 20px;
+    margin-bottom: 16px;
+  }
+  .nav-btn {
+    width: 46px; height: 46px;
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; border: none;
+    background: transparent;
+    color: rgba(255,255,255,0.5);
+    font-size: 20px;
+    transition: all 0.15s;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.9); }
+  .nav-btn.active { background: rgba(255,255,255,0.2); color: #fff; }
+  .nav-spacer { flex: 1; }
+  .nav-tooltip { position: relative; }
+  .nav-tooltip::after {
+    content: attr(title);
+    position: absolute;
+    left: 56px; top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+  }
+  .nav-tooltip:hover::after { opacity: 1; }
+
+  /* ── SCREEN AREA ── */
+  .screen { flex: 1; display: none; flex-direction: column; overflow: auto; min-width: 0; }
+  .screen.active { display: flex; }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    padding: 14px 22px;
+    background: var(--bg-primary);
+    border-bottom: 0.5px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .topbar h2 { font-size: 17px; font-weight: 600; color: var(--text-primary); }
+  .topbar-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 1px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+
+  /* ── CONTENT ── */
+  .content {
+    flex: 1; padding: 18px 22px;
+    display: flex; flex-direction: column; gap: 14px;
+    background: var(--bg-tertiary);
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card-title {
+    font-size: 11px; font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin-bottom: 14px;
+  }
+
+  /* ── GRIDS ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+
+  /* ── STAT CARDS ── */
+  .stat-card {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 4px;
+    border: 0.5px solid var(--border);
+  }
+  .stat-label { font-size: 11px; color: var(--text-secondary); }
+  .stat-value { font-size: 21px; font-weight: 600; color: var(--text-primary); }
+  .stat-sub { font-size: 11px; color: var(--text-tertiary); }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 9px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .badge i { font-size: 12px; }
+  .badge-green { background: var(--green-light); color: var(--green-dark); }
+  .badge-blue  { background: var(--blue-light);  color: var(--blue-mid); }
+  .badge-amber { background: var(--amber-light); color: var(--amber-dark); }
+  .badge-red   { background: var(--red-light);   color: var(--red-dark); }
+  .badge-gray  { background: var(--bg-secondary); color: var(--text-secondary); border: 0.5px solid var(--border); }
+
+  /* ── WIFI PILL ── */
+  .wifi-pill {
+    display: flex; align-items: center; gap: 4px;
+    background: var(--green-light); color: var(--green-dark);
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+
+  /* ── TANK VISUAL ── */
+  .tank-wrap { position: relative; width: 100px; height: 170px; flex-shrink: 0; }
+  .tank-cap {
+    position: absolute; top: 0; left: 12px; right: 12px;
+    height: 14px; background: var(--blue-mid);
+    border-radius: 4px 4px 0 0;
+  }
+  .tank-body {
+    position: absolute; top: 14px; left: 12px; right: 12px; bottom: 0;
+    border: 2px solid var(--blue-mid);
+    border-radius: 2px 2px 8px 8px;
+    overflow: hidden;
+    background: var(--blue-light);
+  }
+  .tank-fill {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--blue);
+    transition: height 1s ease;
+  }
+  .tank-fill::before {
+    content: '';
+    position: absolute; top: -5px; left: -10px; right: -10px;
+    height: 10px;
+    background: var(--blue-mid);
+    border-radius: 50%;
+    opacity: 0.5;
+  }
+  .tank-pipe {
+    position: absolute; bottom: 16px; right: -16px;
+    width: 18px; height: 7px;
+    background: #888; border-radius: 0 3px 3px 0;
+  }
+
+  /* ── LEVEL BAR ── */
+  .level-bar {
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px; overflow: hidden;
+  }
+  .level-fill {
+    height: 100%; border-radius: 4px;
+    transition: width 0.6s ease;
+  }
+
+  /* ── PUMP CIRCLE ── */
+  .pump-circle {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border: 2px solid;
+  }
+  .pump-on  { border-color: var(--green-dark); background: var(--green-light); color: var(--green-dark); }
+  .pump-off { border-color: var(--border-md);  background: var(--bg-secondary); color: var(--text-secondary); }
+  .pump-icon { font-size: 22px; }
+  .pump-label { font-size: 9px; font-weight: 700; margin-top: 1px; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    padding: 11px 0;
+    border-radius: var(--radius-md);
+    font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none;
+    transition: all 0.15s;
+    width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    font-family: inherit;
+  }
+  .btn i { font-size: 16px; }
+  .btn-blue   { background: var(--blue-mid); color: #fff; }
+  .btn-blue:hover { background: var(--blue-dark); }
+  .btn-red    { background: var(--red-light); color: var(--red-dark); border: 0.5px solid var(--red-border); }
+  .btn-red:hover { background: var(--red-border); }
+  .btn-outline { background: transparent; color: var(--text-primary); border: 0.5px solid var(--border-md); }
+  .btn-outline:hover { background: var(--bg-secondary); }
+  .btn-sm { padding: 7px 16px; font-size: 12px; width: auto; }
+
+  /* ── TOGGLE ── */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-label { font-size: 13px; color: var(--text-primary); font-weight: 500; }
+  .toggle-sub   { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+  .toggle {
+    width: 42px; height: 24px; border-radius: 12px;
+    position: relative; cursor: pointer;
+    transition: background 0.2s; flex-shrink: 0; border: none;
+  }
+  .toggle-on  { background: var(--blue-mid); }
+  .toggle-off { background: #c8cdd8; }
+  .toggle-thumb {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #fff;
+    position: absolute; top: 2px;
+    transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle-on  .toggle-thumb { left: 20px; }
+  .toggle-off .toggle-thumb { left: 2px; }
+
+  /* ── NOTIFICATIONS ── */
+  .notif-item {
+    display: flex; gap: 12px;
+    padding: 12px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .notif-item:last-child { border-bottom: none; }
+  .notif-icon {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 17px;
+  }
+  .notif-body { flex: 1; }
+  .notif-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .notif-msg   { font-size: 11px; color: var(--text-secondary); margin-top: 3px; line-height: 1.5; }
+  .notif-time  { font-size: 10px; color: var(--text-tertiary); margin-top: 5px; }
+
+  /* ── AI METRIC ROWS ── */
+  .ai-metric {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .ai-metric:last-child { border-bottom: none; }
+  .ai-metric-label { font-size: 13px; color: var(--text-secondary); }
+  .ai-metric-value { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+  /* ── DEVICE ROWS ── */
+  .device-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .device-row:last-child { border-bottom: none; }
+  .device-info { display: flex; align-items: center; gap: 12px; }
+  .device-icon {
+    width: 34px; height: 34px;
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; color: var(--text-secondary);
+    border: 0.5px solid var(--border);
+  }
+  .device-name { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .device-sub  { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+
+  /* ── SOLAR ── */
+  .solar-big { text-align: center; padding: 14px 0 8px; }
+  .solar-num  { font-size: 38px; font-weight: 700; color: var(--green-dark); }
+  .solar-unit { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+  /* ── SETTINGS ── */
+  .settings-section { margin-bottom: 16px; }
+  .settings-section-title {
+    font-size: 11px; font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.07em;
+    padding: 0 2px; margin-bottom: 8px;
+  }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px;
+    background: var(--bg-primary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-md);
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .settings-row:hover { background: var(--bg-secondary); }
+  .settings-row-label {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--text-primary); font-weight: 500;
+  }
+  .settings-row-label i { font-size: 18px; color: var(--text-secondary); }
+  .settings-val { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+
+  /* ── CODE BLOCK ── */
+  .code-block {
+    font-size: 11px; color: var(--text-secondary);
+    font-family: 'Courier New', monospace;
+    background: var(--bg-secondary);
+    padding: 12px; border-radius: var(--radius-md);
+    line-height: 1.8;
+    border: 0.5px solid var(--border);
+  }
+
+  /* ── CANVAS ── */
+  canvas { display: block; width: 100% !important; border-radius: var(--radius-md); }
+
+  /* ── SCROLLBAR ── */
+  .screen::-webkit-scrollbar { width: 4px; }
+  .screen::-webkit-scrollbar-track { background: transparent; }
+  .screen::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 2px; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    body { padding: 0; }
+    .app-shell { border-radius: 0; min-height: 100vh; flex-direction: column; }
+    .sidebar { width: 100%; height: 56px; flex-direction: row; padding: 0 12px; overflow-x: auto; gap: 2px; }
+    .nav-brand { margin-bottom: 0; margin-right: 8px; width: 36px; height: 36px; font-size: 17px; }
+    .nav-spacer { display: none; }
+    .content { padding: 14px 14px; }
+    .topbar { padding: 12px 14px; }
+    .grid3 { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ══ SIDEBAR ══ -->
+  <div class="sidebar">
+    <div class="nav-brand"><i class="ti ti-droplet"></i></div>
+    <button class="nav-btn active nav-tooltip" data-screen="home" title="Dashboard"><i class="ti ti-home"></i></button>
+    <button class="nav-btn nav-tooltip" data-screen="pump" title="Pump Control"><i class="ti ti-engine"></i></button>
+    <button class="nav-btn nav-tooltip" data-screen="monitor" title="Monitoring"><i class="ti ti-chart-line"></i></button>
+    <button class="nav-btn nav-tooltip" data-screen="notif" title="Notifications"><i class="ti ti-bell"></i></button>
+    <button class="nav-btn nav-tooltip" data-screen="ai" title="AI Analytics"><i class="ti ti-brain"></i></button>
+    <button class="nav-btn nav-tooltip" data-screen="device" title="Device Status"><i class="ti ti-cpu"></i></button>
+    <button class="nav-btn nav-tooltip" data-screen="solar" title="Solar Energy"><i class="ti ti-solar-panel"></i></button>
+    <div class="nav-spacer"></div>
+    <button class="nav-btn nav-tooltip" data-screen="settings" title="Settings"><i class="ti ti-settings"></i></button>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN 1 — HOME DASHBOARD
+  ══════════════════════════════════════════ -->
+  <div class="screen active" id="screen-home">
+    <div class="topbar">
+      <div>
+        <h2>Dashboard</h2>
+        <div class="topbar-sub">Last updated: just now · ESP32-A4C2</div>
+      </div>
+      <div class="topbar-right">
+        <div class="wifi-pill"><i class="ti ti-wifi" style="font-size:13px"></i>Connected</div>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- Tank level card -->
+      <div class="card">
+        <div class="card-title">Water Tank Level</div>
+        <div style="display:flex;align-items:center;gap:28px;">
+          <div class="tank-wrap">
+            <div class="tank-cap"></div>
+            <div class="tank-body">
+              <div class="tank-fill" id="home-fill" style="height:72%;"></div>
+            </div>
+            <div class="tank-pipe"></div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:40px;font-weight:700;color:var(--blue-dark);line-height:1;">72%</div>
+            <div style="font-size:14px;color:var(--text-secondary);margin-top:4px;">720 litres available</div>
+            <div style="margin:12px 0 8px;">
+              <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-bottom:5px;"><span>0 L</span><span>500 L</span><span>1000 L</span></div>
+              <div class="level-bar"><div class="level-fill" style="width:72%;background:var(--blue);"></div></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <span class="badge badge-blue"><i class="ti ti-loader"></i>Filling</span>
+              <span class="badge badge-green"><i class="ti ti-plug"></i>Pump ON</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="grid4">
+        <div class="stat-card">
+          <div class="stat-label">Pump status</div>
+          <div class="stat-value" style="color:var(--green-dark);">ON</div>
+          <div class="stat-sub">Running 12 min</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Tank status</div>
+          <div class="stat-value" style="font-size:17px;">Filling</div>
+          <div class="stat-sub">~18 min to full</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Today's usage</div>
+          <div class="stat-value">210 L</div>
+          <div class="stat-sub">↓ 8% vs yesterday</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">WiFi signal</div>
+          <div class="stat-value" style="font-size:16px;">–62 dBm</div>
+          <div class="stat-sub">Good · 2.4 GHz</div>
+        </div>
+      </div>
+
+      <!-- Quick controls -->
+      <div class="card">
+        <div class="card-title">Quick pump control</div>
+        <div class="grid2" style="gap:10px;">
+          <button class="btn btn-blue"><i class="ti ti-player-play"></i>Start pump</button>
+          <button class="btn btn-red"><i class="ti ti-player-stop"></i>Stop pump</button>
+        </div>
+      </div>
+
+      <!-- Thresholds -->
+      <div class="card">
+        <div class="card-title">Auto thresholds</div>
+        <div class="ai-metric"><span class="ai-metric-label">Pump turns ON below</span><span class="badge badge-red">Level &lt; 30%</span></div>
+        <div class="ai-metric"><span class="ai-metric-label">Pump turns OFF above</span><span class="badge badge-green">Level &gt; 90%</span></div>
+        <div class="ai-metric" style="border-bottom:none;"><span class="ai-metric-label">WiFi status</span><span class="badge badge-green"><i class="ti ti-wifi"></i>Connected</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN 2 — PUMP CONTROL
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-pump">
+    <div class="topbar">
+      <h2>Pump control</h2>
+      <span class="badge badge-green"><i class="ti ti-circle-dot"></i>Pump active</span>
+    </div>
+    <div class="content">
+
+      <div class="card" style="text-align:center;padding:22px 18px;">
+        <div class="card-title" style="text-align:left;">Current state</div>
+        <div style="display:flex;justify-content:center;align-items:center;gap:36px;margin:10px 0 18px;">
+          <div class="pump-circle pump-on">
+            <i class="ti ti-engine pump-icon"></i>
+            <div class="pump-label">ON</div>
+          </div>
+          <div>
+            <div style="font-size:24px;font-weight:700;color:var(--green-dark);">Running</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">12 min 34 sec</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-tertiary);margin-bottom:6px;"><span>0%</span><span style="color:var(--blue-mid);font-weight:700;">72% current</span><span>100%</span></div>
+        <div class="level-bar" style="height:10px;"><div class="level-fill" style="width:72%;background:var(--blue);"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:6px;"><span>Pump ON ▶ 30%</span><span>Pump OFF ▶ 90%</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Mode selection</div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Auto mode</div>
+            <div class="toggle-sub">ESP32 manages pump automatically by thresholds</div>
+          </div>
+          <button class="toggle toggle-on" aria-label="Auto mode"><span class="toggle-thumb"></span></button>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">Manual mode</div>
+            <div class="toggle-sub">Control pump remotely via this app</div>
+          </div>
+          <button class="toggle toggle-off" aria-label="Manual mode"><span class="toggle-thumb"></span></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Manual remote controls</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <button class="btn btn-blue"><i class="ti ti-player-play"></i>Start pump</button>
+          <button class="btn btn-red"><i class="ti ti-player-stop"></i>Stop pump</button>
+          <button class="btn btn-outline"><i class="ti ti-refresh"></i>Sync with ESP32</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Control logic (auto mode)</div>
+        <div class="ai-metric"><span class="ai-metric-label">Pump ON trigger</span><span class="badge badge-red">Water level &lt; 30%</span></div>
+        <div class="ai-metric"><span class="ai-metric-label">Pump OFF trigger</span><span class="badge badge-green">Water level &gt; 90%</span></div>
+        <div class="ai-metric"><span class="ai-metric-label">Pump start delay</span><span class="ai-metric-value">5 seconds</span></div>
+        <div class="ai-metric" style="border-bottom:none;"><span class="ai-metric-label">Max run time</span><span class="ai-metric-value">60 minutes</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN 3 — REAL-TIME MONITORING
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-monitor">
+    <div class="topbar">
+      <h2>Real-time monitoring</h2>
+      <span class="badge badge-blue"><i class="ti ti-live-view"></i>Live</span>
+    </div>
+    <div class="content">
+
+      <div class="card">
+        <div class="card-title">Live water level — last 24 hours</div>
+        <canvas id="liveChart" height="140"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Daily water usage — this week</div>
+        <canvas id="dailyChart" height="130"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Monthly consumption trend</div>
+        <canvas id="monthlyChart" height="120"></canvas>
+      </div>
+
+      <div class="grid3">
+        <div class="stat-card" style="text-align:center;">
+          <div class="stat-label">Today</div>
+          <div class="stat-value" style="font-size:17px;">210 L</div>
+        </div>
+        <div class="stat-card" style="text-align:center;">
+          <div class="stat-label">This week</div>
+          <div class="stat-value" style="font-size:17px;">1.4 kL</div>
+        </div>
+        <div class="stat-card" style="text-align:center;">
+          <div class="stat-label">This month</div>
+          <div class="stat-value" style="font-size:17px;">6.2 kL</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN 4 — NOTIFICATIONS
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-notif">
+    <div class="topbar">
+      <h2>Notifications</h2>
+      <span class="badge badge-red">3 new</span>
+    </div>
+    <div class="content">
+
+      <div class="card">
+        <div class="card-title">Recent alerts</div>
+
+        <div class="notif-item">
+          <div class="notif-icon" style="background:var(--green-light);color:var(--green-dark);"><i class="ti ti-droplet-filled"></i></div>
+          <div class="notif-body">
+            <div class="notif-title">Tank full — pump auto OFF</div>
+            <div class="notif-msg">Water level reached 91%. Pump stopped automatically to prevent overflow.</div>
+            <div class="notif-time">Today 09:14</div>
+          </div>
+          <span class="badge badge-green" style="align-self:flex-start;flex-shrink:0;">New</span>
+        </div>
+
+        <div class="notif-item">
+          <div class="notif-icon" style="background:var(--amber-light);color:var(--amber-dark);"><i class="ti ti-alert-triangle"></i></div>
+          <div class="notif-body">
+            <div class="notif-title">Low water level warning</div>
+            <div class="notif-msg">Level dropped to 28%. Pump starting in 5 seconds automatically.</div>
+            <div class="notif-time">Today 06:52</div>
+          </div>
+          <span class="badge badge-amber" style="align-self:flex-start;flex-shrink:0;">New</span>
+        </div>
+
+        <div class="notif-item">
+          <div class="notif-icon" style="background:var(--red-light);color:var(--red-dark);"><i class="ti ti-clock-x"></i></div>
+          <div class="notif-body">
+            <div class="notif-title">Pump running too long</div>
+            <div class="notif-msg">Pump has been active for 58 minutes. Check for leakage or supply issues.</div>
+            <div class="notif-time">Today 04:11</div>
+          </div>
+          <span class="badge badge-red" style="align-self:flex-start;flex-shrink:0;">New</span>
+        </div>
+
+        <div class="notif-item">
+          <div class="notif-icon" style="background:var(--red-light);color:var(--red-dark);"><i class="ti ti-wifi-off"></i></div>
+          <div class="notif-body">
+            <div class="notif-title">WiFi disconnected</div>
+            <div class="notif-msg">ESP32 lost connection for 4 minutes. Auto-reconnected successfully.</div>
+            <div class="notif-time">Yesterday 14:30</div>
+          </div>
+        </div>
+
+        <div class="notif-item">
+          <div class="notif-icon" style="background:var(--red-light);color:var(--red-dark);"><i class="ti ti-droplet-off"></i></div>
+          <div class="notif-body">
+            <div class="notif-title">Tank empty</div>
+            <div class="notif-msg">Level reached 0%. Manual refill required or check the water supply line.</div>
+            <div class="notif-time">2 days ago 08:05</div>
+          </div>
+        </div>
+
+        <div class="notif-item">
+          <div class="notif-icon" style="background:var(--amber-light);color:var(--amber-dark);"><i class="ti ti-radar"></i></div>
+          <div class="notif-body">
+            <div class="notif-title">Sensor error detected</div>
+            <div class="notif-msg">HC-SR04 returned an out-of-range value. Please check wiring connections.</div>
+            <div class="notif-time">3 days ago 17:42</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="card">
+        <div class="card-title">Notification preferences</div>
+        <div class="toggle-row">
+          <div class="toggle-label">Tank full / empty alerts</div>
+          <button class="toggle toggle-on" aria-label="Tank alerts"><span class="toggle-thumb"></span></button>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">Low water level warning</div>
+          <button class="toggle toggle-on" aria-label="Low water"><span class="toggle-thumb"></span></button>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">Pump running too long</div>
+          <button class="toggle toggle-on" aria-label="Pump long"><span class="toggle-thumb"></span></button>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">WiFi / sensor errors</div>
+          <button class="toggle toggle-off" aria-label="WiFi errors"><span class="toggle-thumb"></span></button>
+        </div>
+        <div class="toggle-row">
+          <div class="toggle-label">AI smart alerts</div>
+          <button class="toggle toggle-on" aria-label="AI alerts"><span class="toggle-thumb"></span></button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN 5 — AI ANALYTICS
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-ai">
+    <div class="topbar">
+      <h2>AI analytics</h2>
+      <span class="badge badge-blue"><i class="ti ti-sparkles"></i>ML powered</span>
+    </div>
+    <div class="content">
+
+      <div class="card">
+        <div class="card-title">Actual vs AI forecast (litres/day)</div>
+        <canvas id="aiChart" height="145"></canvas>
+        <div style="display:flex;gap:16px;margin-top:10px;font-size:11px;">
+          <span style="display:flex;align-items:center;gap:5px;color:var(--text-secondary);"><span style="width:14px;height:3px;background:var(--blue-mid);border-radius:2px;display:inline-block;"></span>Actual</span>
+          <span style="display:flex;align-items:center;gap:5px;color:var(--text-secondary);"><span style="width:14px;height:3px;background:var(--green-dark);border-radius:2px;display:inline-block;border-top:2px dashed var(--green-dark);"></span>AI forecast</span>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="stat-card">
+          <div class="stat-label">Today's usage</div>
+          <div class="stat-value">210 L</div>
+          <div class="stat-sub">Actual</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Tomorrow forecast</div>
+          <div class="stat-value">225 L</div>
+          <div class="stat-sub" style="color:var(--amber-dark);">↑ 7% predicted</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Weekly forecast</div>
+          <div class="stat-value">1.55 kL</div>
+          <div class="stat-sub">Next 7 days</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Model accuracy</div>
+          <div class="stat-value" style="color:var(--green-dark);">94.2%</div>
+          <div class="stat-sub">Last 30 days</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Smart recommendations</div>
+        <div class="notif-item" style="padding:10px 0;">
+          <div class="notif-icon" style="background:var(--blue-light);color:var(--blue-mid);width:34px;height:34px;font-size:15px;"><i class="ti ti-clock"></i></div>
+          <div class="notif-body">
+            <div class="notif-title" style="font-size:12px;">Schedule pump at 05:00 AM</div>
+            <div class="notif-msg">Low usage period — reduces energy cost vs peak hours.</div>
+          </div>
+        </div>
+        <div class="notif-item" style="padding:10px 0;">
+          <div class="notif-icon" style="background:var(--green-light);color:var(--green-dark);width:34px;height:34px;font-size:15px;"><i class="ti ti-trending-down"></i></div>
+          <div class="notif-body">
+            <div class="notif-title" style="font-size:12px;">Usage 12% above monthly avg</div>
+            <div class="notif-msg">Check for leakage or unusual activity this week.</div>
+          </div>
+        </div>
+        <div class="notif-item" style="padding:10px 0;border-bottom:none;">
+          <div class="notif-icon" style="background:var(--amber-light);color:var(--amber-dark);width:34px;height:34px;font-size:15px;"><i class="ti ti-drop"></i></div>
+          <div class="notif-body">
+            <div class="notif-title" style="font-size:12px;">Predicted shortage this Friday</div>
+            <div class="notif-msg">Tank may reach &lt;20% by 18:00 Friday — fill early.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN 6 — DEVICE STATUS
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-device">
+    <div class="topbar">
+      <h2>Device status</h2>
+      <span class="badge badge-green">All systems OK</span>
+    </div>
+    <div class="content">
+
+      <div class="card">
+        <div class="card-title">Hardware components</div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon"><i class="ti ti-cpu"></i></div>
+            <div><div class="device-name">ESP32 microcontroller</div><div class="device-sub">Uptime: 3 d 14 h 22 m</div></div>
+          </div>
+          <span class="badge badge-green">Online</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon"><i class="ti ti-radar"></i></div>
+            <div><div class="device-name">HC-SR04 ultrasonic sensor</div><div class="device-sub">Reading: 28 cm · 4 Hz</div></div>
+          </div>
+          <span class="badge badge-green">Active</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon"><i class="ti ti-switch"></i></div>
+            <div><div class="device-name">Relay module</div><div class="device-sub">NC · 5 V coil</div></div>
+          </div>
+          <span class="badge badge-green">Energised</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon"><i class="ti ti-engine"></i></div>
+            <div><div class="device-name">Water pump</div><div class="device-sub">Current: 2.1 A · 220 V AC</div></div>
+          </div>
+          <span class="badge badge-green">Running</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon"><i class="ti ti-wifi"></i></div>
+            <div><div class="device-name">WiFi connectivity</div><div class="device-sub">SSID: HomeNet · –62 dBm</div></div>
+          </div>
+          <span class="badge badge-green">Connected</span>
+        </div>
+        <div class="device-row">
+          <div class="device-info">
+            <div class="device-icon"><i class="ti ti-solar-panel"></i></div>
+            <div><div class="device-name">Solar / battery backup</div><div class="device-sub">Battery: 87% · Solar: active</div></div>
+          </div>
+          <span class="badge badge-green">Charging</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Signal & performance</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;"><span style="color:var(--text-secondary);">WiFi signal (2.4 GHz)</span><span style="color:var(--text-primary);font-weight:600;">–62 dBm (Good)</span></div>
+            <div class="level-bar"><div class="level-fill" style="width:75%;background:var(--blue);"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;"><span style="color:var(--text-secondary);">Firebase latency</span><span style="color:var(--text-primary);font-weight:600;">12 ms</span></div>
+            <div class="level-bar"><div class="level-fill" style="width:90%;background:var(--green);"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;"><span style="color:var(--text-secondary);">Sensor accuracy</span><span style="color:var(--text-primary);font-weight:600;">±1 cm</span></div>
+            <div class="level-bar"><div class="level-fill" style="width:97%;background:var(--blue-mid);"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Firebase database structure</div>
+        <div class="code-block">
+/devices/{device_id}/sensor/level<br>
+/devices/{device_id}/sensor/distance_cm<br>
+/devices/{device_id}/pump/status<br>
+/devices/{device_id}/pump/command<br>
+/devices/{device_id}/pump/runtime_sec<br>
+/devices/{device_id}/settings/threshold_low<br>
+/devices/{device_id}/settings/threshold_high<br>
+/devices/{device_id}/settings/mode<br>
+/devices/{device_id}/wifi/ssid<br>
+/devices/{device_id}/wifi/rssi<br>
+/devices/{device_id}/analytics/daily_usage<br>
+/devices/{device_id}/solar/battery_pct
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN 7 — SOLAR ENERGY
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-solar">
+    <div class="topbar">
+      <h2>Solar energy</h2>
+      <span class="badge badge-green"><i class="ti ti-sun"></i>Generating</span>
+    </div>
+    <div class="content">
+
+      <div class="card" style="text-align:center;">
+        <div class="card-title" style="text-align:left;">Solar panel output — today</div>
+        <div class="solar-big">
+          <div class="solar-num">1.84</div>
+          <div class="solar-unit">kWh generated</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-top:10px;">
+          <span style="font-size:12px;color:var(--text-secondary);">Battery</span>
+          <div class="level-bar" style="width:200px;flex:none;">
+            <div class="level-fill" style="width:87%;background:var(--green);"></div>
+          </div>
+          <span style="font-size:13px;font-weight:700;color:var(--green-dark);">87%</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-secondary);margin-top:6px;">18.5 V · 2.8 A · Panel active</div>
+      </div>
+
+      <div class="grid2">
+        <div class="stat-card">
+          <div class="stat-label">Energy saved</div>
+          <div class="stat-value" style="color:var(--green-dark);">₹42</div>
+          <div class="stat-sub">Today's savings</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">CO₂ reduced</div>
+          <div class="stat-value" style="font-size:17px;">1.47 kg</div>
+          <div class="stat-sub">Today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Panel status</div>
+          <div class="stat-value" style="font-size:16px;color:var(--green-dark);">Active</div>
+          <div class="stat-sub">18.5 V · 2.8 A</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Monthly savings</div>
+          <div class="stat-value" style="color:var(--green-dark);">₹1,260</div>
+          <div class="stat-sub">vs grid power</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Solar generation — this week (kWh)</div>
+        <canvas id="solarChart" height="130"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Green impact summary</div>
+        <div class="ai-metric"><span class="ai-metric-label">Total CO₂ offset (this month)</span><span class="ai-metric-value" style="color:var(--green-dark);">44.1 kg</span></div>
+        <div class="ai-metric"><span class="ai-metric-label">Trees equivalent</span><span class="ai-metric-value">2.2 trees / year</span></div>
+        <div class="ai-metric" style="border-bottom:none;"><span class="ai-metric-label">Grid independence</span><span class="ai-metric-value" style="color:var(--green-dark);">68%</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SCREEN 8 — SETTINGS
+  ══════════════════════════════════════════ -->
+  <div class="screen" id="screen-settings">
+    <div class="topbar">
+      <h2>Settings</h2>
+      <button class="btn btn-blue btn-sm"><i class="ti ti-device-floppy"></i>Save</button>
+    </div>
+    <div class="content">
+
+      <div class="settings-section">
+        <div class="settings-section-title">Tank configuration</div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-ruler"></i>Tank height</div><div class="settings-val">200 cm <i class="ti ti-chevron-right"></i></div></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-cylinder"></i>Tank capacity</div><div class="settings-val">1000 litres <i class="ti ti-chevron-right"></i></div></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-clock-pause"></i>Pump delay</div><div class="settings-val">5 seconds <i class="ti ti-chevron-right"></i></div></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-clock-stop"></i>Max pump run time</div><div class="settings-val">60 min <i class="ti ti-chevron-right"></i></div></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Auto thresholds</div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-arrow-down"></i>Pump ON below</div><div class="settings-val" style="color:var(--red-dark);font-weight:600;">30% <i class="ti ti-chevron-right"></i></div></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-arrow-up"></i>Pump OFF above</div><div class="settings-val" style="color:var(--green-dark);font-weight:600;">90% <i class="ti ti-chevron-right"></i></div></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Connectivity</div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-wifi"></i>WiFi SSID</div><div class="settings-val">HomeNet ··· <i class="ti ti-chevron-right"></i></div></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-brand-firebase"></i>Firebase project</div><div class="settings-val">smart-tank-01 <i class="ti ti-chevron-right"></i></div></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-cpu"></i>Device ID</div><div class="settings-val">ESP32-A4C2 <i class="ti ti-chevron-right"></i></div></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Appearance</div>
+        <div class="settings-row">
+          <div class="settings-row-label"><i class="ti ti-moon"></i>Dark mode</div>
+          <button class="toggle toggle-off" aria-label="Dark mode"><span class="toggle-thumb"></span></button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-label"><i class="ti ti-bell"></i>Push notifications</div>
+          <button class="toggle toggle-on" aria-label="Notifications"><span class="toggle-thumb"></span></button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">User profile</div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-user"></i>Name</div><div class="settings-val">Ranvir Kumar <i class="ti ti-chevron-right"></i></div></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-mail"></i>Email</div><div class="settings-val">ranvir@email.com <i class="ti ti-chevron-right"></i></div></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-lock"></i>Change password</div><div class="settings-val"><i class="ti ti-chevron-right"></i></div></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-logout"></i>Sign out</div><div class="settings-val" style="color:var(--red-dark);"><i class="ti ti-chevron-right"></i></div></div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Future scope</div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-microphone"></i>Voice control (Alexa / Google)</div><span class="badge badge-gray">Coming soon</span></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-topology-star-2"></i>Multi-tank monitoring</div><span class="badge badge-gray">Coming soon</span></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-droplets"></i>Leakage detection</div><span class="badge badge-gray">Coming soon</span></div>
+        <div class="settings-row"><div class="settings-row-label"><i class="ti ti-tool"></i>Predictive maintenance</div><span class="badge badge-gray">Coming soon</span></div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- end app-shell -->
+
+<!-- ══ JAVASCRIPT ══ -->
+<script>
+  /* ── Navigation ── */
+  const navBtns = document.querySelectorAll('.nav-btn[data-screen]');
+  const screens = document.querySelectorAll('.screen');
+
+  navBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.screen;
+      navBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      screens.forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-' + id).classList.add('active');
+      if (id === 'monitor' && !window._chartsInit) initCharts();
+      if (id === 'ai'      && !window._aiInit)     initAI();
+      if (id === 'solar'   && !window._solarInit)  initSolar();
+    });
+  });
+
+  /* ── Toggles ── */
+  document.querySelectorAll('.toggle').forEach(t => {
+    t.addEventListener('click', () => {
+      const on = t.classList.contains('toggle-on');
+      t.classList.toggle('toggle-on', !on);
+      t.classList.toggle('toggle-off', on);
+    });
+  });
+
+  /* ── Chart helpers ── */
+  const tC = () => 'rgba(0,0,0,0.50)';
+  const gC = () => 'rgba(0,0,0,0.06)';
+  const baseOpts = (yLabel) => ({
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { cornerRadius: 6, padding: 9, titleFont: { size: 11 }, bodyFont: { size: 11 } }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: tC(), font: { size: 10 } } },
+      y: {
+        grid: { color: gC() },
+        border: { display: false },
+        ticks: { color: tC(), font: { size: 10 } },
+        title: yLabel ? { display: true, text: yLabel, color: tC(), font: { size: 10 } } : undefined
+      }
+    }
+  });
+
+  function initCharts() {
+    window._chartsInit = true;
+
+    /* Live level */
+    new Chart(document.getElementById('liveChart'), {
+      type: 'line',
+      data: {
+        labels: ['00','02','04','06','08','10','12','14','16','18','20','22','Now'],
+        datasets: [{
+          label: 'Level %',
+          data: [85, 91, 90, 28, 55, 72, 80, 72, 68, 65, 72, 74, 72],
+          borderColor: '#185FA5',
+          backgroundColor: 'rgba(55,138,221,0.10)',
+          tension: 0.4, fill: true,
+          pointRadius: 3, pointBackgroundColor: '#185FA5'
+        }]
+      },
+      options: baseOpts('%')
+    });
+
+    /* Daily usage bar */
+    new Chart(document.getElementById('dailyChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        datasets: [{
+          label: 'Usage (L)',
+          data: [195, 220, 180, 240, 195, 260, 210],
+          backgroundColor: '#378ADD',
+          borderRadius: 5
+        }]
+      },
+      options: baseOpts('Litres')
+    });
+
+    /* Monthly */
+    new Chart(document.getElementById('monthlyChart'), {
+      type: 'line',
+      data: {
+        labels: ['Jan','Feb','Mar','Apr','May','Jun'],
+        datasets: [{
+          label: 'Monthly (kL)',
+          data: [5.8, 6.1, 5.5, 6.4, 6.0, 6.2],
+          borderColor: '#0C447C',
+          backgroundColor: 'rgba(12,68,124,0.09)',
+          tension: 0.4, fill: true,
+          pointRadius: 3, pointBackgroundColor: '#0C447C'
+        }]
+      },
+      options: baseOpts('kL')
+    });
+  }
+
+  function initAI() {
+    window._aiInit = true;
+    const labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun','Mon+1','Tue+1','Wed+1','Thu+1','Fri+1'];
+    new Chart(document.getElementById('aiChart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Actual (L)',
+            data: [195,220,180,240,195,260,210,null,null,null,null,null],
+            borderColor: '#185FA5',
+            backgroundColor: 'rgba(55,138,221,0.08)',
+            tension: 0.4, fill: true,
+            pointRadius: 3, pointBackgroundColor: '#185FA5'
+          },
+          {
+            label: 'Forecast (L)',
+            data: [null,null,null,null,null,null,210,225,215,235,220,240],
+            borderColor: '#3B6D11',
+            backgroundColor: 'rgba(99,153,34,0.07)',
+            tension: 0.4, fill: true,
+            borderDash: [6, 4],
+            pointRadius: 3, pointBackgroundColor: '#3B6D11'
+          }
+        ]
+      },
+      options: {
+        ...baseOpts('Litres'),
+        plugins: {
+          legend: { display: true, labels: { color: 'rgba(0,0,0,0.6)', boxWidth: 14, font: { size: 11 } } },
+          tooltip: { cornerRadius: 6, padding: 9 }
+        }
+      }
+    });
+  }
+
+  function initSolar() {
+    window._solarInit = true;
+    new Chart(document.getElementById('solarChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        datasets: [{
+          label: 'kWh',
+          data: [1.6, 1.9, 1.2, 2.1, 1.8, 2.3, 1.84],
+          backgroundColor: '#639922',
+          borderRadius: 5
+        }]
+      },
+      options: baseOpts('kWh')
+    });
+  }
+</script>
+
+</body>
+</html>
