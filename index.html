@@ -457,7 +457,7 @@
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <span class="badge badge-blue"><i class="ti ti-loader"></i>Filling</span>
-              <span class="badge badge-green"><i class="ti ti-plug"></i>Pump ON</span>
+              <span class="badge badge-green" id="dash-pump-badge"><i class="ti ti-plug"></i>Pump ON</span>
             </div>
           </div>
         </div>
@@ -467,13 +467,13 @@
       <div class="grid4">
         <div class="stat-card">
           <div class="stat-label">Pump status</div>
-          <div class="stat-value" style="color:var(--green-dark);">ON</div>
-          <div class="stat-sub">Running 12 min</div>
+          <div class="stat-value" id="dash-pump-value" style="color:var(--text-secondary);">OFF</div>
+          <div class="stat-sub" id="dash-pump-sub">Not running</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Tank status</div>
-          <div class="stat-value" style="font-size:17px;">Filling</div>
-          <div class="stat-sub">~18 min to full</div>
+          <div class="stat-value" id="dash-tank-status" style="font-size:17px;">--</div>
+          <div class="stat-sub">Live from sensor</div>
         </div>
         <div class="stat-card">
           <div class="stat-label">Today's usage</div>
@@ -491,8 +491,8 @@
       <div class="card">
         <div class="card-title">Quick pump control</div>
         <div class="grid2" style="gap:10px;">
-          <button class="btn btn-blue"><i class="ti ti-player-play"></i>Start pump</button>
-          <button class="btn btn-red"><i class="ti ti-player-stop"></i>Stop pump</button>
+          <button class="btn btn-blue" onclick="sendPumpCommand('ON')"><i class="ti ti-player-play"></i>Start pump</button>
+          <button class="btn btn-red" onclick="sendPumpCommand('OFF')"><i class="ti ti-player-stop"></i>Stop pump</button>
         </div>
       </div>
 
@@ -513,24 +513,24 @@
   <div class="screen" id="screen-pump">
     <div class="topbar">
       <h2>Pump control</h2>
-      <span class="badge badge-green"><i class="ti ti-circle-dot"></i>Pump active</span>
+      <span class="badge badge-green" id="pump-screen-badge"><i class="ti ti-circle-dot"></i>Pump active</span>
     </div>
     <div class="content">
 
       <div class="card" style="text-align:center;padding:22px 18px;">
         <div class="card-title" style="text-align:left;">Current state</div>
         <div style="display:flex;justify-content:center;align-items:center;gap:36px;margin:10px 0 18px;">
-          <div class="pump-circle pump-on">
+          <div class="pump-circle pump-off" id="pump-status-circle">
             <i class="ti ti-engine pump-icon"></i>
-            <div class="pump-label">ON</div>
+            <div class="pump-label" id="pump-status-label">OFF</div>
           </div>
           <div>
-            <div style="font-size:24px;font-weight:700;color:var(--green-dark);">Running</div>
-            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">12 min 34 sec</div>
+            <div style="font-size:24px;font-weight:700;color:var(--text-secondary);" id="pump-status-text">Stopped</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;" id="pump-runtime-text">Not running</div>
           </div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-tertiary);margin-bottom:6px;"><span>0%</span><span style="color:var(--blue-mid);font-weight:700;">72% current</span><span>100%</span></div>
-        <div class="level-bar" style="height:10px;"><div class="level-fill" style="width:72%;background:var(--blue);"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-tertiary);margin-bottom:6px;"><span>0%</span><span style="color:var(--blue-mid);font-weight:700;" id="pump-level-label">-- current</span><span>100%</span></div>
+        <div class="level-bar" style="height:10px;"><div class="level-fill" style="width:0%;background:var(--blue);"></div></div>
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-tertiary);margin-top:6px;"><span>Pump ON ▶ 30%</span><span>Pump OFF ▶ 90%</span></div>
       </div>
 
@@ -541,23 +541,23 @@
             <div class="toggle-label">Auto mode</div>
             <div class="toggle-sub">ESP32 manages pump automatically by thresholds</div>
           </div>
-          <button class="toggle toggle-on" aria-label="Auto mode"><span class="toggle-thumb"></span></button>
+          <button class="toggle toggle-on" id="auto-mode-toggle" onclick="setAutoMode(true)" aria-label="Auto mode"><span class="toggle-thumb"></span></button>
         </div>
         <div class="toggle-row">
           <div>
             <div class="toggle-label">Manual mode</div>
             <div class="toggle-sub">Control pump remotely via this app</div>
           </div>
-          <button class="toggle toggle-off" aria-label="Manual mode"><span class="toggle-thumb"></span></button>
+          <button class="toggle toggle-off" id="manual-mode-toggle" onclick="setAutoMode(false)" aria-label="Manual mode"><span class="toggle-thumb"></span></button>
         </div>
       </div>
 
       <div class="card">
         <div class="card-title">Manual remote controls</div>
         <div style="display:flex;flex-direction:column;gap:10px;">
-          <button class="btn btn-blue"><i class="ti ti-player-play"></i>Start pump</button>
-          <button class="btn btn-red"><i class="ti ti-player-stop"></i>Stop pump</button>
-          <button class="btn btn-outline"><i class="ti ti-refresh"></i>Sync with ESP32</button>
+          <button class="btn btn-blue" onclick="sendPumpCommand('ON')"><i class="ti ti-player-play"></i>Start pump</button>
+          <button class="btn btn-red" onclick="sendPumpCommand('OFF')"><i class="ti ti-player-stop"></i>Stop pump</button>
+          <button class="btn btn-outline" onclick="syncWithESP32()"><i class="ti ti-refresh"></i>Sync with ESP32</button>
         </div>
       </div>
 
@@ -1074,19 +1074,106 @@
       if (el.textContent.includes('litres')) el.textContent = litres.toFixed(1) + ' litres available';
     });
 
-    // Level bar fill
+    // Level bar fill (dashboard)
     const levelFillEls = document.querySelectorAll('#screen-home .level-fill');
     levelFillEls.forEach(el => el.style.width = pct + '%');
 
-    // Tank status badge
+    // Tank status badge (dashboard top)
     const statusBadge = document.querySelector('#screen-home .badge-blue');
-    if (statusBadge) {
-      statusBadge.innerHTML = '<i class="ti ti-loader"></i>' + tankStatus;
-    }
+    if (statusBadge) statusBadge.innerHTML = '<i class="ti ti-loader"></i>' + tankStatus;
 
-    // Pump control screen progress
+    // Tank status stat card (dashboard)
+    const tankStatusEl = document.getElementById('dash-tank-status');
+    if (tankStatusEl) tankStatusEl.textContent = tankStatus;
+
+    // Pump control screen progress + level label
     const pumpLevelBar = document.querySelector('#screen-pump .level-fill');
     if (pumpLevelBar) pumpLevelBar.style.width = pct + '%';
+    const pumpLevelLabel = document.getElementById('pump-level-label');
+    if (pumpLevelLabel) pumpLevelLabel.textContent = pct + '% current';
+  }
+
+  /* ─── Live listener: pump status (ON/OFF) ─── */
+  db.ref('/devices/' + DEVICE_ID + '/pump').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+    updatePumpUI(data.status === 'ON');
+  });
+
+  function updatePumpUI(isOn) {
+    // Dashboard badge
+    const dashBadge = document.getElementById('dash-pump-badge');
+    if (dashBadge) {
+      dashBadge.className = 'badge ' + (isOn ? 'badge-green' : 'badge-gray');
+      dashBadge.innerHTML = '<i class="ti ti-plug"></i>Pump ' + (isOn ? 'ON' : 'OFF');
+    }
+    // Dashboard stat card
+    const dashVal = document.getElementById('dash-pump-value');
+    const dashSub = document.getElementById('dash-pump-sub');
+    if (dashVal) { dashVal.textContent = isOn ? 'ON' : 'OFF'; dashVal.style.color = isOn ? 'var(--green-dark)' : 'var(--text-secondary)'; }
+    if (dashSub) dashSub.textContent = isOn ? 'Running' : 'Not running';
+
+    // Pump control screen
+    const circle = document.getElementById('pump-status-circle');
+    const label = document.getElementById('pump-status-label');
+    const text = document.getElementById('pump-status-text');
+    const runtimeText = document.getElementById('pump-runtime-text');
+    const screenBadge = document.getElementById('pump-screen-badge');
+
+    if (circle) circle.className = 'pump-circle ' + (isOn ? 'pump-on' : 'pump-off');
+    if (label) label.textContent = isOn ? 'ON' : 'OFF';
+    if (text) { text.textContent = isOn ? 'Running' : 'Stopped'; text.style.color = isOn ? 'var(--green-dark)' : 'var(--text-secondary)'; }
+    if (runtimeText) runtimeText.textContent = isOn ? 'Pump is active' : 'Not running';
+    if (screenBadge) {
+      screenBadge.className = 'badge ' + (isOn ? 'badge-green' : 'badge-gray');
+      screenBadge.innerHTML = '<i class="ti ti-circle-dot"></i>Pump ' + (isOn ? 'active' : 'inactive');
+    }
+  }
+
+  /* ─── Live listener: auto/manual mode ─── */
+  db.ref('/devices/' + DEVICE_ID + '/settings/autoMode').on('value', (snapshot) => {
+    const isAuto = snapshot.val();
+    const autoToggle = document.getElementById('auto-mode-toggle');
+    const manualToggle = document.getElementById('manual-mode-toggle');
+    if (autoToggle) { autoToggle.className = 'toggle ' + (isAuto ? 'toggle-on' : 'toggle-off'); }
+    if (manualToggle) { manualToggle.className = 'toggle ' + (!isAuto ? 'toggle-on' : 'toggle-off'); }
+  });
+
+  /* ═══════════════════════════════════════════════════════
+     APP → ESP32 COMMANDS (button click handlers)
+  ═══════════════════════════════════════════════════════ */
+
+  // Start ya Stop pump button dabane par yeh Firebase me likhega.
+  // ESP32 har 3 second me yeh value padhega aur relay switch karega.
+  function sendPumpCommand(command) {
+    db.ref('/devices/' + DEVICE_ID + '/pump/command').set(command)
+      .then(() => {
+        console.log('Pump command sent:', command);
+      })
+      .catch((err) => {
+        console.error('Failed to send pump command:', err);
+        alert('Command bhejne mein error aaya. Internet/Firebase connection check karo.');
+      });
+  }
+
+  // Auto mode ON karne par true, Manual select karne par false Firebase me jayega.
+  function setAutoMode(isAuto) {
+    db.ref('/devices/' + DEVICE_ID + '/settings/autoMode').set(isAuto)
+      .then(() => console.log('Auto mode set to:', isAuto))
+      .catch((err) => console.error('Failed to set mode:', err));
+  }
+
+  // Sync button — abhi turant latest sensor + pump status firebase se manually refresh karta hai
+  function syncWithESP32() {
+    db.ref('/devices/' + DEVICE_ID).once('value')
+      .then((snapshot) => {
+        const data = snapshot.val();
+        if (!data) { alert('Device se koi data nahi mila.'); return; }
+        if (data.sensor) updateDashboard(data.sensor.level_pct ?? 0, data.sensor.litres ?? 0, data.sensor.tank_status ?? '--');
+        if (data.pump) updatePumpUI(data.pump.status === 'ON');
+        setConnectionStatus(data.status === 'online');
+      })
+      .catch((err) => console.error('Sync failed:', err));
   }
 </script>
 
