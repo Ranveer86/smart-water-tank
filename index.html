@@ -6,6 +6,9 @@
 <title>Smart Water Tank Controller</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<!-- Firebase SDK (compat version — simple to use, no build step needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1005,6 +1008,88 @@
 </div><!-- end app-shell -->
 
 <!-- ══ JAVASCRIPT ══ -->
+<script>
+  /* ═══════════════════════════════════════════════════════
+     FIREBASE CONFIG — apna config yahan daala hua hai
+  ═══════════════════════════════════════════════════════ */
+  const firebaseConfig = {
+    databaseURL: "https://smart-water-tank-c44a8-default-rtdb.asia-southeast1.firebasedatabase.app/"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const DEVICE_ID = "tank_01";
+  const TANK_CAPACITY_L = 5; // tumhare tank ki capacity (litres)
+
+  /* ─── Live listener: sensor data ─── */
+  db.ref('/devices/' + DEVICE_ID + '/sensor').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+
+    const pct = data.level_pct ?? 0;
+    const litres = data.litres ?? ((pct / 100) * TANK_CAPACITY_L);
+    const tankStatus = data.tank_status || "Normal";
+
+    updateDashboard(pct, litres, tankStatus);
+  });
+
+  /* ─── Live listener: device online/offline + wifi ─── */
+  db.ref('/devices/' + DEVICE_ID).on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) { setConnectionStatus(false); return; }
+    setConnectionStatus(data.status === "online");
+
+    const lastUpdatedEl = document.querySelector('.topbar-sub');
+    if (lastUpdatedEl) {
+      const now = new Date();
+      lastUpdatedEl.textContent = `Last updated: ${now.toLocaleTimeString()} · ESP32-${DEVICE_ID}`;
+    }
+  });
+
+  function setConnectionStatus(isOnline) {
+    const pill = document.querySelector('.wifi-pill');
+    if (!pill) return;
+    if (isOnline) {
+      pill.style.background = 'var(--green-light)';
+      pill.style.color = 'var(--green-dark)';
+      pill.innerHTML = '<i class="ti ti-wifi" style="font-size:13px"></i>Connected';
+    } else {
+      pill.style.background = 'var(--red-light)';
+      pill.style.color = 'var(--red-dark)';
+      pill.innerHTML = '<i class="ti ti-wifi-off" style="font-size:13px"></i>Offline';
+    }
+  }
+
+  function updateDashboard(pct, litres, tankStatus) {
+    // Tank fill visual
+    const fillEl = document.getElementById('home-fill');
+    if (fillEl) fillEl.style.height = pct + '%';
+
+    // % big number
+    const pctEls = document.querySelectorAll('#screen-home [style*="font-size:40px"]');
+    pctEls.forEach(el => el.textContent = pct + '%');
+
+    // Litres text
+    const litresEls = document.querySelectorAll('#screen-home [style*="font-size:14px"]');
+    litresEls.forEach(el => {
+      if (el.textContent.includes('litres')) el.textContent = litres.toFixed(1) + ' litres available';
+    });
+
+    // Level bar fill
+    const levelFillEls = document.querySelectorAll('#screen-home .level-fill');
+    levelFillEls.forEach(el => el.style.width = pct + '%');
+
+    // Tank status badge
+    const statusBadge = document.querySelector('#screen-home .badge-blue');
+    if (statusBadge) {
+      statusBadge.innerHTML = '<i class="ti ti-loader"></i>' + tankStatus;
+    }
+
+    // Pump control screen progress
+    const pumpLevelBar = document.querySelector('#screen-pump .level-fill');
+    if (pumpLevelBar) pumpLevelBar.style.width = pct + '%';
+  }
+</script>
+
 <script>
   /* ── Navigation ── */
   const navBtns = document.querySelectorAll('.nav-btn[data-screen]');
